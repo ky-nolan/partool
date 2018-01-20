@@ -1,0 +1,13 @@
+# Documentation
+docs/_build
+
+# Tests.
+
+# Distribution
+*.egg-info/
+build
+dist
+
+# Miscelleneous
+*.pyc
+venv*/
