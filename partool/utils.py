@@ -14,23 +14,23 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def _zero_pad(match):
-    # optional '-' to support negative numbers
-    _num_re = re.compile(r'-?\d+')
-    # number of chars in the largest possible int
-    _maxint_digits = 8
-    # format for zero padding positive integers
-    _zero_pad_int_fmt = '{{0:0{0}d}}'.format(_maxint_digits)
-    # / is 0 - 1, so that negative numbers will come before positive
-    _zero_pad_neg_int_fmt = '/{{0:0{0}d}}'.format(_maxint_digits)
-    n = int(match.group(0))
-    # if n is negative, we'll use the negative format and flip the number using
-    # maxint so that -2 comes before -1, ...
-    return _zero_pad_int_fmt.format(n) \
-               if n > -1 else _zero_pad_neg_int_fmt.format(n + _maxint_digits)
+	# optional '-' to support negative numbers
+	_num_re = re.compile(r'-?\d+')
+	# number of chars in the largest possible int
+	_maxint_digits = 8
+	# format for zero padding positive integers
+	_zero_pad_int_fmt = '{{0:0{0}d}}'.format(_maxint_digits)
+	# / is 0 - 1, so that negative numbers will come before positive
+	_zero_pad_neg_int_fmt = '/{{0:0{0}d}}'.format(_maxint_digits)
+	n = int(match.group(0))
+	# if n is negative, we'll use the negative format and flip the number using
+	# maxint so that -2 comes before -1, ...
+	return _zero_pad_int_fmt.format(n) \
+	       if n > -1 else _zero_pad_neg_int_fmt.format(n + _maxint_digits)
 
 def zero_pad_numbers(s):
-    _num_re = re.compile(r'-?\d+')
-    return _num_re.sub(_zero_pad, s)
+	_num_re = re.compile(r'-?\d+')
+	return _num_re.sub(_zero_pad, s)
 
 def checkfile(path):
 	path = os.path.expanduser(path)
@@ -67,7 +67,7 @@ def findCreds(jsonFile):
 					try:
 						username = str(input(
 						    "Username not specified in {}\n" \
-			                    "Username:".format(jsonFile)))
+						    "Username:".format(jsonFile)))
 					except ValueError:
 						print('Username:')
 						username = str(input())
@@ -75,7 +75,7 @@ def findCreds(jsonFile):
 					logging.info("APIC Password found in {}".format(jsonFile))
 				else:
 					try:
-					  	password = getpass()
+						password = getpass()
 					except ValueError:
 						print('Password:')
 						password = getpass()
@@ -88,17 +88,41 @@ def findCreds(jsonFile):
 					except ValueError:
 						baseUrl = 'https://' + str(input('APIC IP or Hostname:'))
 				payload = {"aaaUser" : {
-				            "attributes" : {
-				                "name" : username,
-				                "pwd"  : password
-				            }}}
+				    "attributes" : {
+				        "name" : username,
+				        "pwd"  : password
+				    }}}
 				return payload, baseUrl
 			except IOError:
 				logging.critical('{} file not found!'.format(jsonFile))
 
+class apicSession(object):
+	
+	def __init__(self):
+		self.payload, self.baseUrl = findCreds('info.json')
+		self.loginUri = '/api/aaaLogin.json'
+		self.loginUrl = self.baseUrl + self.loginUri
+		self.session = self.login()
+	
+	def login(self):
+		with requests.Session() as s:
+			p = s.post(self.loginUrl, json=self.payload, verify=False)
+			responseCheck(p)
+			return s
+
+
+def responseCheck(response):
+	'''
+	Check if response status code is 200 and do nothing if it is. If value
+	other than 200, raise fault and log the status code.
+	'''
+	if response.status_code != 200:
+		logging.critical(response.text)
+		response.raise_for_status()
+
 def login():
 	'''
-
+	
 	'''
 	payload, baseUrl = findCreds('info.json')
 	loginUri = '/api/aaaLogin.json'
@@ -112,12 +136,35 @@ def login():
 			raise Error
 		else:
 			logging.info("Connection to APIC successful")
-			return s, baseUrl
 
 def dictDump(dictDumpData, wb, ws):
 	'''
 	'''
-	df = pd.DataFrame.from_dict(dictDumpData)
 	writer = pd.ExcelWriter(path=wb, engine='xlsxwriter')
+	df = pd.DataFrame.from_dict(dictDumpData)
 	df.to_excel(writer, sheet_name=ws)
 	return logger.info('{} data written to {} successfully!'.format(wb, ws))
+
+def loader():
+	'''
+	Function sets the jinja2 template folder to load ACI related
+	json files from. It returns an object that can be used to
+	load jinja2 formatted json files to pass variables into for
+	ACI Managed Object (MO) creation
+	'''
+	loader = jinja2.FileSystemLoader(searchpath="./templates/")
+	env = jinja2.Environment(loader=loader)
+	env.filters['jsonify'] = json.dumps
+	return env
+
+def template(env, jsonFile):
+	'''
+	Function loads a specified JSON/jinja2 template
+
+	param env: jinja2 object representing the loaded templates 
+	param jsonFile: name of the JSON template file to be loaded
+
+	returns template to be passed variables to be rendered
+	'''
+	template = env.get_template(jsonFile)
+	return template

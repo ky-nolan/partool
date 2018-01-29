@@ -1,0 +1,53 @@
+{
+  "infraNodeP": {
+    "attributes": {
+      "dn": "uni/infra/nprof-{{ name }}",
+      "name": "{{ name }}",
+      "rn": "nprof-{{ name }}",
+      "status": "created,modified"
+    },
+    "children": [
+      {
+        "infraLeafS": {
+          "attributes": {
+            "dn": "uni/infra/nprof-{{ name }}/leaves-{{ name }}-typ-range",
+            "name": "{{ name }}",
+            "rn": "leaves-{{ name }}-typ-range",
+            "type": "range"
+          },
+          "children": [
+            {
+              "infraNodeBlk": {
+                "attributes": {
+                  "dn": "uni/infra/nprof-{{ name }}/leaves-{{ name }}-typ-range/nodeblk-{{ name }}",
+                  "from_": "{{ nodeId }}",
+                  "name": "{{ name }}",
+                  "rn": "nodeblk-{{ name }}",
+                  "to_": "{{ nodeId }}"
+                },
+                "children": []
+              }
+            },
+            {
+              "infraRsAccNodePGrp": {
+                "attributes": {
+                  "tDn": "uni/infra/funcprof/accnodepgrp-ACI1"
+                },
+                "children": []
+              }
+            }
+          ]
+        }
+      },
+      {
+        "infraRsAccPortP": {
+          "attributes": {
+            "status": "created,modified",
+            "tDn": "uni/infra/accportprof-{{ name }}"
+          },
+          "children": []
+        }
+      }
+    ]
+  }
+}
