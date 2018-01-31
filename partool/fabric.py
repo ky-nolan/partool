@@ -14,7 +14,12 @@ coloredlogs.install()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def createObject(env, template, **kwargs):
+def createVpcDom():
+	'''
+	Function creates a vpc pair
+	'''
+
+def postMoUni(env, apic, template, **kwargs):
 	'''
 	generic function to generate JSON payloads from
 	jinja2 templates and posting to uni.
@@ -22,6 +27,10 @@ def createObject(env, template, **kwargs):
 	# load and render template
 	payloadTemplate = env.get_template(template)
 	payload = payloadTemplate.render(kwargs)
+	respose = apic.session.post(uniUrl, verify=False, data=payload)
+	utils.responseCheck(response)
+	return logging.info('postMoUni successfully deployed')
+	
 
 def createNodeP(env, apic, nodePName, id, nodePolGrp):
 	'''
@@ -36,7 +45,7 @@ def createNodeP(env, apic, nodePName, id, nodePolGrp):
 	utils.responseCheck(nodeResp)
 	logging.info('Node Profile {} created'.format(nodePName))
 
-def createIntfP(env, apic, intfPName, nodePName):
+def createIntfP(env, apic, intfPName):
 	'''
 	Function creates interface profiles
 	'''
@@ -47,14 +56,16 @@ def createIntfP(env, apic, intfPName, nodePName):
 	intfPayload = intfTemplate.render(intfPName=intfPName)
 	intfResp = apic.session.post(uniUrl, verify=False, data=intfPayload)
 	utils.responseCheck(intfResp)
+
+def createIntfRs(env, apic, nodePName, intfPName):
+	uniUri = '/api/mo/uni.json'
+	uniUrl = apic.baseUrl + uniUri
 	# load, render, and post the rsAccPortP
 	intfRsTemplate = env.get_template('rsAccPortP.json')
 	intfRsPayload = intfRsTemplate.render(nodePName=nodePName, intfPName=intfPName)
 	intfRsResp = apic.session.post(uniUrl, verify=False, data=intfRsPayload)
-	utils.responseCheck(intfRsResp)
-	logging.info('Interface Profile {} created and linked to {}'.format(intfPName, nodePName))
-
-
+	utils.responseCheck(intfRsResp)	
+	logging.info('Interface Profile {} related to {}'.format(intfPName, nodePName))
 
 def fabricBase(apic, **kwargs):
 	'''
@@ -84,22 +95,38 @@ def fabricBase(apic, **kwargs):
 	
 	# Load jinja2 templates
 	env = utils.loader()
-	
+	if kwargs['single'] == True and kwargs['ws'] == '':
+		logging.critical('single post set, but worksheet option -w not specified')
+		logging.critical('please specify a worksheet to load post data from')
+	elif kwargs['single'] == True and kwargs['ws'] != '':
+		df = pd.read_excel(filePath, sheet_name=kwargs['ws'])
+		postMoUni(env, apic, template)
 	if kwargs['nodes'] == True:
 		for row in fabricDf.iterrows():
-			if row[1]['nodeId1'] != 'Null' and row[1]['nodeId2'] != 'Null':
-				logging.info('Two node IDs in row, skipping nodeProfile and creating Interface Profile')
-			elif row[1]['nodeId1'] != 'Null' and row[1]['nodeId2'] == 'Null':
-				createNodeP(env, apic, row[1]['nodePName'], row[1]['nodeId1'], row[1]['nodePolGrp'])
+			vpcId = str(row[1]['vpcId'])
+			nodePro = row[1]['nodePName']
+			intfPro = row[1]['intfPName']
+			nodeId = row[1]['nodeId']
+			nodePolGrp = row[1]['nodePolGrp']
+			if vpcId.lower() != 'Null':
+				logging.info('creating intfP {}'.format(intfPro))
+				logging.info('associating to nodeP {}'.format(nodePro))
+				createIntfP(env, apic, intfPro)
+				createIntfRs(env, apic, nodePro, intfPro)
+			elif vpcId.lower() == 'Null':
+				logging.info('creating nodeP {} with nodeId {}'.format(nodePro, nodeId))
+				createNodeP(env, apic, nodePro, nodeId, nodePolGrp)
 			else:
-				logging.critical('incorrect node Id values.')
+				logging.critical('incorrect vpcId value. specify integer or Null')
 				sys.exit()
 	if kwargs['interfaces'] == True:
 		for row in fabricDf.iterrows():
-			createIntfP(env, apic, row[1]['intfPName'], row[1]['nodePName'])
+			nodePro = row[1]['nodePName']
+			intfPro = row[1]['intfPName']
+			createIntfP(env, apic, intfPro)
+			createIntfRs(env, apic, nodePro, intfPro)
 	if kwargs['policies'] == True:
 		logging.info('Creating Interface Policy Groups')
-	
 
 def main(*args):
 	parser = argparse.ArgumentParser(description="Fabric Builder")
@@ -115,6 +142,15 @@ def main(*args):
 	                    action="store_true",
 	                    default=False,
 	                    help="set this option to deploy interface policy-groups")
+	parser.add_argument('-s',
+	                    action="store_true",
+	                    default=False,
+	                    help="set this for single posts")
+	parser.add_argument('-w',
+	                    required=False,
+	                    nargs="?",
+	                    default='',
+	                    help="set worksheet for single posts")	
 	parser.add_argument('-f',
 	                    '--filename',
 	                    required=False,
@@ -123,7 +159,13 @@ def main(*args):
 	                    help="set this option to read from a non-default file. The default is values.xlsx")
 	args = parser.parse_args()
 	apic = utils.apicSession()
-	fabricBase(apic, filename=args.filename, nodes=args.n, interfaces=args.i, policies=args.p)
+	fabricBase(apic,
+	           filename=args.filename,
+	           nodes=args.n,
+	           interfaces=args.i,
+	           policies=args.p,
+	           single=args.s,
+	           ws=args.w)
 
 if __name__ == '__main__':
 	main()
