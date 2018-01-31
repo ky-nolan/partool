@@ -12,5 +12,12 @@ dist
 *.pyc
 venv*/
 
+# Wing Project Files
+*.wpr
+*.wpu
+
 # Spreadsheets
 *.xlsx
+
+# macos
+*DS_Store*

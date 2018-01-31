@@ -1,9 +1,9 @@
 {
   "infraAccPortP": {
     "attributes": {
-      "dn": "uni/infra/accportprof-{{ name }}",
-      "name": "{{ name }}",
-      "rn": "accportprof-{{ name }}",
+      "dn": "uni/infra/accportprof-{{ intfPName }}",
+      "name": "{{ intfPName }}",
+      "rn": "accportprof-{{ intfPName }}",
       "status": "created,modified"
     },
     "children": []

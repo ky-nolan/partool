@@ -42,7 +42,8 @@ def main(**kwargs):
 	data = []
 	for fault in faultsResponse['imdata']:
 		data.append(fault['faultSummary']['attributes'])
-	utils.dictDump(data, wb, 'faults')
+	writer = utils.writer(wb)
+	utils.dictDump(data, 'faults')
 	apic.session.close()	
 
 if __name__ == '__main__':

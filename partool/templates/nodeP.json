@@ -1,28 +1,28 @@
 {
   "infraNodeP": {
     "attributes": {
-      "dn": "uni/infra/nprof-{{ name }}",
-      "name": "{{ name }}",
-      "rn": "nprof-{{ name }}",
+      "dn": "uni/infra/nprof-{{ nodePName }}",
+      "name": "{{ nodePName }}",
+      "rn": "nprof-{{ nodePName }}",
       "status": "created,modified"
     },
     "children": [
       {
         "infraLeafS": {
           "attributes": {
-            "dn": "uni/infra/nprof-{{ name }}/leaves-{{ name }}-typ-range",
-            "name": "{{ name }}",
-            "rn": "leaves-{{ name }}-typ-range",
+            "dn": "uni/infra/nprof-{{ nodePName }}/leaves-{{ nodePName }}-typ-range",
+            "name": "{{ nodePName }}",
+            "rn": "leaves-{{ nodePName }}-typ-range",
             "type": "range"
           },
           "children": [
             {
               "infraNodeBlk": {
                 "attributes": {
-                  "dn": "uni/infra/nprof-{{ name }}/leaves-{{ name }}-typ-range/nodeblk-{{ name }}",
+                  "dn": "uni/infra/nprof-{{ nodePName }}/leaves-{{ nodePName }}-typ-range/nodeblk-{{ nodePName }}",
                   "from_": "{{ nodeId }}",
-                  "name": "{{ name }}",
-                  "rn": "nodeblk-{{ name }}",
+                  "name": "{{ nodePName }}",
+                  "rn": "nodeblk-{{ nodePName }}",
                   "to_": "{{ nodeId }}"
                 },
                 "children": []
@@ -31,21 +31,12 @@
             {
               "infraRsAccNodePGrp": {
                 "attributes": {
-                  "tDn": "uni/infra/funcprof/accnodepgrp-ACI1"
+                  "tDn": "uni/infra/funcprof/accnodepgrp-{{ nodePolGrp }}"
                 },
                 "children": []
               }
             }
           ]
-        }
-      },
-      {
-        "infraRsAccPortP": {
-          "attributes": {
-            "status": "created,modified",
-            "tDn": "uni/infra/accportprof-{{ name }}"
-          },
-          "children": []
         }
       }
     ]

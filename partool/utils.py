@@ -7,6 +7,7 @@ import os
 from getpass import getpass
 import re
 import pandas as pd
+import jinja2
 
 requests.packages.urllib3.disable_warnings()
 coloredlogs.install()
@@ -137,13 +138,23 @@ def login():
 		else:
 			logging.info("Connection to APIC successful")
 
-def dictDump(dictDumpData, wb, ws):
+def dictDump(data, ws):
 	'''
 	'''
-	writer = pd.ExcelWriter(path=wb, engine='xlsxwriter')
-	df = pd.DataFrame.from_dict(dictDumpData)
+	df = pd.DataFrame.from_dict(data)
 	df.to_excel(writer, sheet_name=ws)
-	return logger.info('{} data written to {} successfully!'.format(wb, ws))
+	return logger.info('{} data written successfully!'.format(ws))
+
+def dictDumpTwo(writer, data, columnNames, ws):
+	'''
+	'''
+	df = pd.DataFrame(data, columns=columnNames)
+	df.to_excel(writer, sheet_name=ws)
+	return logger.info('{} data written successfully!'.format(ws))
+
+def writer(wb):
+	return pd.ExcelWriter(path=wb, engine='xlsxwriter')
+	
 
 def loader():
 	'''

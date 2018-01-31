@@ -7,6 +7,7 @@ import utils
 import os
 import sys
 import pandas as pd
+import argparse
 
 requests.packages.urllib3.disable_warnings()
 coloredlogs.install()
@@ -22,27 +23,38 @@ def createObject(env, template, **kwargs):
 	payloadTemplate = env.get_template(template)
 	payload = payloadTemplate.render(kwargs)
 
-def createNodeP(env, apic, nodeRow):
+def createNodeP(env, apic, nodePName, id, nodePolGrp):
 	'''
-	Function creates switch profile and interface profiles
+	Function creates switch profiles
 	'''
-	# load and render interface profile template
-	intfTemplate = env.get_template('intfP.json')
-	intfPayload = intfTemplate.render(name=nodeRow['name'])
-	if nodeRow['nodeId1'] != Null and nodeRow['nodeId2'] != Null:
-		# load and render switch profile template
-		nodeTemplate = env.get_template('nodeP.json')
-	elif nodeRow['nodeId1'] != Null and nodeRow['nodeId2'] == Null:
-		logging.info('')
-	else:
-		logging.critical('Node Id values incorrect')
-		
-	nodePayload = nodeTemplate.render(name=name, nodeId=nodeId)
 	uniUri = '/api/mo/uni.json'
 	uniUrl = apic.baseUrl + uniUri
-	apic.session.post(uniUrl, verify=False, data=intfPayload)
-	apic.session.post(uniUrl, verify=False, data=nodePayload)
-	
+	# load and render switch profile template
+	nodeTemplate = env.get_template('nodeP.json')
+	nodePayload = nodeTemplate.render(nodePName=nodePName, nodeId=id, nodePolGrp=nodePolGrp)
+	nodeResp = apic.session.post(uniUrl, verify=False, data=nodePayload)
+	utils.responseCheck(nodeResp)
+	logging.info('Node Profile {} created'.format(nodePName))
+
+def createIntfP(env, apic, intfPName, nodePName):
+	'''
+	Function creates interface profiles
+	'''
+	uniUri = '/api/mo/uni.json'
+	uniUrl = apic.baseUrl + uniUri	
+	# load and render interface profile template
+	intfTemplate = env.get_template('intfP.json')
+	intfPayload = intfTemplate.render(intfPName=intfPName)
+	intfResp = apic.session.post(uniUrl, verify=False, data=intfPayload)
+	utils.responseCheck(intfResp)
+	# load, render, and post the rsAccPortP
+	intfRsTemplate = env.get_template('rsAccPortP.json')
+	intfRsPayload = intfRsTemplate.render(nodePName=nodePName, intfPName=intfPName)
+	intfRsResp = apic.session.post(uniUrl, verify=False, data=intfRsPayload)
+	utils.responseCheck(intfRsResp)
+	logging.info('Interface Profile {} created and linked to {}'.format(intfPName, nodePName))
+
+
 
 def fabricBase(apic, **kwargs):
 	'''
@@ -54,33 +66,64 @@ def fabricBase(apic, **kwargs):
 	param apic: requests session to use for HTTP Methods
 	
 	'''
-	# Check for kwargs. if not specified, generate base values/objects
+	# Check for filename arg. if not specified, generate base values/objects
 	if 'filename' in kwargs:
 		wb = kwargs['filename']
 	else:
 		wb = 'values.xlsx'
-	
 	# Open Values xlsx. If it doesn't existing raise a fault
 	filePath = os.path.abspath(wb)
 	
 	# Check if workbook exists and load workbook with pandas
 	if not os.path.exists(filePath):
 		logging.critical('values.xlsx or {} not found!'.format(wb))
-		sys.exit(status=2)
+		sys.exit()
+	
+	logging.info('Loading data from fabric worksheet in {}'.format(wb))
 	fabricDf = pd.read_excel(filePath, sheet_name='fabric')
 	
 	# Load jinja2 templates
 	env = utils.loader()
-	for row in fabricDf.iterrows():
-		logging.info((row[1]['name'],row[1]['nodeId']))
-		#logging.info(row['name'],row['nodeId'])
-		createNodeP(env, apic, row[1])
+	
+	if kwargs['nodes'] == True:
+		for row in fabricDf.iterrows():
+			if row[1]['nodeId1'] != 'Null' and row[1]['nodeId2'] != 'Null':
+				logging.info('Two node IDs in row, skipping nodeProfile and creating Interface Profile')
+			elif row[1]['nodeId1'] != 'Null' and row[1]['nodeId2'] == 'Null':
+				createNodeP(env, apic, row[1]['nodePName'], row[1]['nodeId1'], row[1]['nodePolGrp'])
+			else:
+				logging.critical('incorrect node Id values.')
+				sys.exit()
+	if kwargs['interfaces'] == True:
+		for row in fabricDf.iterrows():
+			createIntfP(env, apic, row[1]['intfPName'], row[1]['nodePName'])
+	if kwargs['policies'] == True:
+		logging.info('Creating Interface Policy Groups')
 	
 
-def main(**kwargs):
+def main(*args):
+	parser = argparse.ArgumentParser(description="Fabric Builder")
+	parser.add_argument('-n', 
+	                    action="store_true",
+	                    default=False,
+	                    help="set this option to deploy switch profiles")
+	parser.add_argument('-i',
+	                    action="store_true",
+	                    default=False,
+	                    help="set this option to deploy interface profiles")
+	parser.add_argument('-p',
+	                    action="store_true",
+	                    default=False,
+	                    help="set this option to deploy interface policy-groups")
+	parser.add_argument('-f',
+	                    '--filename',
+	                    required=False,
+	                    nargs="?",
+	                    default='values.xlsx',
+	                    help="set this option to read from a non-default file. The default is values.xlsx")
+	args = parser.parse_args()
 	apic = utils.apicSession()
-	fabricBase(apic)
-
+	fabricBase(apic, filename=args.filename, nodes=args.n, interfaces=args.i, policies=args.p)
 
 if __name__ == '__main__':
-	main(**dict(arg.split('=') for arg in sys.argv[1:]))
+	main()
