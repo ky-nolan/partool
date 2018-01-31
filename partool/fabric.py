@@ -14,23 +14,35 @@ coloredlogs.install()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+class values(object):
+
+	def parseArgs(self, args):
+		for arg in args:
+			self.filename = arg.filename
+			self.n = arg.n
+			self.i = arg.i
+			self.p = arg.p
+			self.s = arg.s
+			self.w = arg.w
+			self.d = arg.d
+
 def createVpcDom():
 	'''
 	Function creates a vpc pair
 	'''
 
-def postMoUni(env, apic, template, **kwargs):
+def postMoUni(env, apic, template, kwargs):
 	'''
 	generic function to generate JSON payloads from
 	jinja2 templates and posting to uni.
 	'''
+	uniUri = '/api/mo/uni.json'
+	uniUrl = apic.baseUrl + uniUri
 	# load and render template
 	payloadTemplate = env.get_template(template)
 	payload = payloadTemplate.render(kwargs)
-	respose = apic.session.post(uniUrl, verify=False, data=payload)
+	response = apic.session.post(uniUrl, verify=False, data=payload)
 	utils.responseCheck(response)
-	return logging.info('postMoUni successfully deployed')
-	
 
 def createNodeP(env, apic, nodePName, id, nodePolGrp):
 	'''
@@ -67,7 +79,7 @@ def createIntfRs(env, apic, nodePName, intfPName):
 	utils.responseCheck(intfRsResp)	
 	logging.info('Interface Profile {} related to {}'.format(intfPName, nodePName))
 
-def fabricBase(apic, **kwargs):
+def fabricBase(apic, *args, **kwargs):
 	'''
 	Function takes in existing APIC requests session, reads in values
 	from a xlsx spreadsheet, and uses them to create APIC MOs related
@@ -77,56 +89,67 @@ def fabricBase(apic, **kwargs):
 	param apic: requests session to use for HTTP Methods
 	
 	'''
+	options = values()
+	options.parseArgs(args)
+	keywords = kwargs
 	# Check for filename arg. if not specified, generate base values/objects
-	if 'filename' in kwargs:
-		wb = kwargs['filename']
-	else:
-		wb = 'values.xlsx'
+	wb = options.filename
 	# Open Values xlsx. If it doesn't existing raise a fault
 	filePath = os.path.abspath(wb)
-	
+
 	# Check if workbook exists and load workbook with pandas
 	if not os.path.exists(filePath):
 		logging.critical('values.xlsx or {} not found!'.format(wb))
 		sys.exit()
-	
-	logging.info('Loading data from fabric worksheet in {}'.format(wb))
-	fabricDf = pd.read_excel(filePath, sheet_name='fabric')
-	
 	# Load jinja2 templates
 	env = utils.loader()
-	if kwargs['single'] == True and kwargs['ws'] == '':
-		logging.critical('single post set, but worksheet option -w not specified')
-		logging.critical('please specify a worksheet to load post data from')
-	elif kwargs['single'] == True and kwargs['ws'] != '':
-		df = pd.read_excel(filePath, sheet_name=kwargs['ws'])
-		postMoUni(env, apic, template)
-	if kwargs['nodes'] == True:
-		for row in fabricDf.iterrows():
-			vpcId = str(row[1]['vpcId'])
+	if options.n == True:
+		nodeDf = pd.read_excel(filePath, sheet_name='nodes')
+		for row in nodeDf.iterrows():
 			nodePro = row[1]['nodePName']
 			intfPro = row[1]['intfPName']
 			nodeId = row[1]['nodeId']
 			nodePolGrp = row[1]['nodePolGrp']
-			if vpcId.lower() != 'Null':
-				logging.info('creating intfP {}'.format(intfPro))
-				logging.info('associating to nodeP {}'.format(nodePro))
-				createIntfP(env, apic, intfPro)
-				createIntfRs(env, apic, nodePro, intfPro)
-			elif vpcId.lower() == 'Null':
-				logging.info('creating nodeP {} with nodeId {}'.format(nodePro, nodeId))
-				createNodeP(env, apic, nodePro, nodeId, nodePolGrp)
-			else:
-				logging.critical('incorrect vpcId value. specify integer or Null')
-				sys.exit()
-	if kwargs['interfaces'] == True:
-		for row in fabricDf.iterrows():
+			logging.info('creating nodeP {} with nodeId {}'.format(nodePro, nodeId))
+			createNodeP(env, apic, nodePro, nodeId, nodePolGrp)
+	if options.i == True:
+		intfProDf = pd.read_excel(filePath, sheet_name='interfaceProfiles')
+		for row in intfProDf.iterrows():
 			nodePro = row[1]['nodePName']
 			intfPro = row[1]['intfPName']
+			logging.info('creating intfP {}'.format(intfPro))
+			logging.info('associating to nodeP {}'.format(nodePro))
 			createIntfP(env, apic, intfPro)
 			createIntfRs(env, apic, nodePro, intfPro)
-	if kwargs['policies'] == True:
+	if options.p == True:
 		logging.info('Creating Interface Policy Groups')
+		intfPolGrpDf = pd.read_excel(filePath, sheet_name='interfacePolicyGroups')
+		intfPolGrpDf.where(intfPolGrpDf.notnull(), '')
+		for row in intfPolGrpDf.iterrows():
+			lagT = str(row[1]['lagT'])
+			if lagT.lower() == 'node' or lagT.lower() == 'link':
+				postMoUni(env, apic, 'infraAccBndlGrp.json', row[1])
+				logging.info('VPC|Port-channel Interface Policy Group {} deployed'.format(row[1]['name']))
+			elif lagT == 'nan':
+				postMoUni(env, apic, 'infraAccPortGrp.json', row[1])
+				logging.info('Access Interface Policy Group {} deployed'.format(row[1]['name']))
+			else:
+				logging.critical('Invalid lagT value in worksheet interfacePolicyGroups')
+				logging.critical('node = vpc; link=discrete port-channel; <null> = access')
+				logging.critical('lagT value specified was {}'.format(lagT))
+				sys.exit()
+	if options.d == True:
+		logging.info('Deploying interface selectors from interfaces worksheet')
+		intfDf = pd.read_excel(filePath, sheet_name='interfaces')
+		for row in intfDf.iterrows():	
+			postMoUni(env, apic, 'infraHPortS.json', row[1])
+	if options.s == True and options.w == '':
+		logging.critical('single post set, but worksheet option -w not specified')
+		logging.critical('please specify a worksheet to load post data from')
+	elif options.s == True and options.w != '':
+		postMoUni(env, apic, kwargs['template'], kwargs)
+
+
 
 def main(*args):
 	parser = argparse.ArgumentParser(description="Fabric Builder")
@@ -150,22 +173,20 @@ def main(*args):
 	                    required=False,
 	                    nargs="?",
 	                    default='',
-	                    help="set worksheet for single posts")	
+	                    help="set worksheet for single posts")
+	parser.add_argument('-d',
+	                    action="store_true",
+	                    default=False,
+	                    help="set this to deploy interface selectors from interfaces worksheet")
 	parser.add_argument('-f',
 	                    '--filename',
 	                    required=False,
 	                    nargs="?",
 	                    default='values.xlsx',
 	                    help="set this option to read from a non-default file. The default is values.xlsx")
-	args = parser.parse_args()
+	args, unknown = parser.parse_known_args()
 	apic = utils.apicSession()
-	fabricBase(apic,
-	           filename=args.filename,
-	           nodes=args.n,
-	           interfaces=args.i,
-	           policies=args.p,
-	           single=args.s,
-	           ws=args.w)
+	fabricBase(apic,args,**dict(kwarg.split('=') for kwarg in unknown))
 
 if __name__ == '__main__':
 	main()

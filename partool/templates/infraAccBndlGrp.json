@@ -1,0 +1,155 @@
+{
+  "infraAccBndlGrp": {
+    "attributes": {
+      "descr": "",
+      "dn": "uni/infra/funcprof/accbundle-{{ name }}",
+      "lagT": "{{ lagT }}",
+      "name": "{{ name }}",
+      "nameAlias": "",
+      "ownerKey": "",
+      "ownerTag": ""
+    },
+    "children": [
+      {
+        "infraRsStpIfPol": {
+          "attributes": {
+            "tnStpIfPolName": "{{ stp }}"
+          }
+        }
+      },
+      {
+        "infraRsQosIngressDppIfPol": {
+          "attributes": {
+            "tnQosDppPolName": ""
+          }
+        }
+      },
+      {
+        "infraRsStormctrlIfPol": {
+          "attributes": {
+            "tnStormctrlIfPolName": "{{ sc }}"
+          }
+        }
+      },
+      {
+        "infraRsQosEgressDppIfPol": {
+          "attributes": {
+            "tnQosDppPolName": ""
+          }
+        }
+      },
+      {
+        "infraRsMonIfInfraPol": {
+          "attributes": {
+            "tnMonInfraPolName": ""
+          }
+        }
+      },
+      {
+        "infraRsMcpIfPol": {
+          "attributes": {
+            "tnMcpIfPolName": "{{ mcp }}"
+          }
+        }
+      },
+      {
+        "infraRsMacsecIfPol": {
+          "attributes": {
+            "tnMacsecIfPolName": ""
+          }
+        }
+      },
+      {
+        "infraRsQosSdIfPol": {
+          "attributes": {
+            "tnQosSdIfPolName": ""
+          }
+        }
+      },
+      {
+        "infraRsAttEntP": {
+          "attributes": {
+            "tDn": "uni/infra/attentp-{{ aaep }}"
+          }
+        }
+      },
+      {
+        "infraRsCdpIfPol": {
+          "attributes": {
+            "tnCdpIfPolName": "{{ cdp }}"
+          }
+        }
+      },
+      {
+        "infraRsL2IfPol": {
+          "attributes": {
+            "tnL2IfPolName": "{{ l2interface }}"
+          }
+        }
+      },
+      {
+        "infraRsQosDppIfPol": {
+          "attributes": {
+            "tnQosDppPolName": ""
+          }
+        }
+      },
+      {
+        "infraRsCoppIfPol": {
+          "attributes": {
+            "tnCoppIfPolName": ""
+          }
+        }
+      },
+      {
+        "infraRsQosPfcIfPol": {
+          "attributes": {
+            "tnQosPfcIfPolName": ""
+          }
+        }
+      },
+      {
+        "infraRsHIfPol": {
+          "attributes": {
+            "tnFabricHIfPolName": "{{ linkLevel }}"
+          }
+        }
+      },
+      {
+        "infraRsL2PortSecurityPol": {
+          "attributes": {
+            "tnL2PortSecurityPolName": ""
+          }
+        }
+      },
+      {
+        "infraRsL2PortAuthPol": {
+          "attributes": {
+            "tnL2PortAuthPolName": ""
+          }
+        }
+      },
+      {
+        "infraRsLacpPol": {
+          "attributes": {
+            "tnLacpLagPolName": "{{ portChannel }}"
+          }
+        }
+      },
+      {
+        "infraRsFcIfPol": {
+          "attributes": {
+            "tnFcIfPolName": ""
+          }
+        }
+      },
+      {
+        "infraRsLldpIfPol": {
+          "attributes": {
+            "tnLldpIfPolName": "{{ lldp }}"
+          }
+        }
+      }
+    ]
+  }
+}
