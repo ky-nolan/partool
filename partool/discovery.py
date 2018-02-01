@@ -24,9 +24,9 @@ def writeIntfP(apic, writer, wb):
     columnNames = ['name', 'dn']
     for intfProf in intfProfResp['imdata']:
         name = intfProf['infraAccPortP']['attributes']['name']
-        dn = intfProf['infraAccPortP']['attributes']['dn'] 
+        dn = intfProf['infraAccPortP']['attributes']['dn']
         data[name] = dn
-    utils.dictDumpTwo(writer, list(data.items()), columnNames, 'interfaceProfiles')   
+    utils.dictDumpTwo(writer, list(data.items()), columnNames, 'interfaceProfiles')
     return logging.info('Interface Profiles written to {}'.format(wb))
 
 def getAccPortGrp(apic, baseUrl):
@@ -80,7 +80,7 @@ def main(**kwargs):
     writer = utils.writer(wb)
     writeIntfP(apic, writer, wb)
     writePolGrps(apic, writer, wb)
-    apic.session.close()	
+    apic.session.close()
 
 if __name__ == '__main__':
     main(**dict(arg.split('=') for arg in sys.argv[1:]))

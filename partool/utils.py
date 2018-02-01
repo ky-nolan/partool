@@ -26,7 +26,7 @@ def _zero_pad(match):
 	n = int(match.group(0))
 	# if n is negative, we'll use the negative format and flip the number using
 	# maxint so that -2 comes before -1, ...
-	return _zero_pad_int_fmt.format(n) \
+        return _zero_pad_int_fmt.format(n) \
 	       if n > -1 else _zero_pad_neg_int_fmt.format(n + _maxint_digits)
 
 def zero_pad_numbers(s):
@@ -98,13 +98,13 @@ def findCreds(jsonFile):
 				logging.critical('{} file not found!'.format(jsonFile))
 
 class apicSession(object):
-	
+
 	def __init__(self):
 		self.payload, self.baseUrl = findCreds('info.json')
 		self.loginUri = '/api/aaaLogin.json'
 		self.loginUrl = self.baseUrl + self.loginUri
 		self.session = self.login()
-	
+
 	def login(self):
 		with requests.Session() as s:
 			p = s.post(self.loginUrl, json=self.payload, verify=False)
@@ -123,7 +123,7 @@ def responseCheck(response):
 
 def login():
 	'''
-	
+
 	'''
 	payload, baseUrl = findCreds('info.json')
 	loginUri = '/api/aaaLogin.json'
@@ -154,7 +154,7 @@ def dictDumpTwo(writer, data, columnNames, ws):
 
 def writer(wb):
 	return pd.ExcelWriter(path=wb, engine='xlsxwriter')
-	
+
 
 def loader():
 	'''
@@ -172,7 +172,7 @@ def template(env, jsonFile):
 	'''
 	Function loads a specified JSON/jinja2 template
 
-	param env: jinja2 object representing the loaded templates 
+	param env: jinja2 object representing the loaded templates
 	param jsonFile: name of the JSON template file to be loaded
 
 	returns template to be passed variables to be rendered
