@@ -26,7 +26,7 @@ def _zero_pad(match):
 	n = int(match.group(0))
 	# if n is negative, we'll use the negative format and flip the number using
 	# maxint so that -2 comes before -1, ...
-        return _zero_pad_int_fmt.format(n) \
+	return _zero_pad_int_fmt.format(n) \
 	       if n > -1 else _zero_pad_neg_int_fmt.format(n + _maxint_digits)
 
 def zero_pad_numbers(s):
@@ -138,10 +138,10 @@ def login():
 		else:
 			logging.info("Connection to APIC successful")
 
-def dictDump(data, ws):
+def dictDump(writer, data, ws):
 	'''
 	'''
-	df = pd.DataFrame.from_dict(data)
+	df = pd.DataFrame(data)
 	df.to_excel(writer, sheet_name=ws)
 	return logger.info('{} data written successfully!'.format(ws))
 

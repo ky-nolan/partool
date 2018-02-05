@@ -8,6 +8,7 @@ import os
 import sys
 import pandas as pd
 import argparse
+import time
 
 requests.packages.urllib3.disable_warnings()
 coloredlogs.install()
@@ -62,7 +63,7 @@ def createIntfP(env, apic, intfPName):
 	Function creates interface profiles
 	'''
 	uniUri = '/api/mo/uni.json'
-	uniUrl = apic.baseUrl + uniUri	
+	uniUrl = apic.baseUrl + uniUri
 	# load and render interface profile template
 	intfTemplate = env.get_template('intfP.json')
 	intfPayload = intfTemplate.render(intfPName=intfPName)
@@ -76,7 +77,7 @@ def createIntfRs(env, apic, nodePName, intfPName):
 	intfRsTemplate = env.get_template('rsAccPortP.json')
 	intfRsPayload = intfRsTemplate.render(nodePName=nodePName, intfPName=intfPName)
 	intfRsResp = apic.session.post(uniUrl, verify=False, data=intfRsPayload)
-	utils.responseCheck(intfRsResp)	
+	utils.responseCheck(intfRsResp)
 	logging.info('Interface Profile {} related to {}'.format(intfPName, nodePName))
 
 def fabricBase(apic, *args, **kwargs):
@@ -85,9 +86,9 @@ def fabricBase(apic, *args, **kwargs):
 	from a xlsx spreadsheet, and uses them to create APIC MOs related
 	to APIC Fabric Policies. Allows passing of filename for the xlsx,
 	but if one is not specified, values.xlsx is used as a default
-	
+
 	param apic: requests session to use for HTTP Methods
-	
+
 	'''
 	options = values()
 	options.parseArgs(args)
@@ -138,11 +139,13 @@ def fabricBase(apic, *args, **kwargs):
 				logging.critical('node = vpc; link=discrete port-channel; <null> = access')
 				logging.critical('lagT value specified was {}'.format(lagT))
 				sys.exit()
+			time.sleep(3)
 	if options.d == True:
 		logging.info('Deploying interface selectors from interfaces worksheet')
 		intfDf = pd.read_excel(filePath, sheet_name='interfaces')
-		for row in intfDf.iterrows():	
+		for row in intfDf.iterrows():
 			postMoUni(env, apic, 'infraHPortS.json', row[1])
+	time.sleep(3)
 	if options.s == True and options.w == '':
 		logging.critical('single post set, but worksheet option -w not specified')
 		logging.critical('please specify a worksheet to load post data from')
@@ -153,7 +156,7 @@ def fabricBase(apic, *args, **kwargs):
 
 def main(*args):
 	parser = argparse.ArgumentParser(description="Fabric Builder")
-	parser.add_argument('-n', 
+	parser.add_argument('-n',
 	                    action="store_true",
 	                    default=False,
 	                    help="set this option to deploy switch profiles")

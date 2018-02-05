@@ -14,29 +14,29 @@ class tenant(object):
 	'''
 	Object that represents a Tenant Object and includes functions to retrieve lists
 	of child
-	
+
 	Attributes:
 	name: A string representing the Tenant's name
-	
+
 	'''
 	def __init__(self, name):
 		'''
 		Return a Tenant object whose name is *name* 
 		'''
 		self.name = name
-	
+
 	def __dict__(self):
 		print('placeholder')
-	
+
 	def getVrfs(self):
 		print('placeholder')
-	
+
 	def getBds(self):
 		print('placeholder')
 
 	def getEpgs(self):
 		print('placeholder')
-	
+
 
 def tenants(apicSession, baseUrl):
 	tnUri = '/api/class/fvTenant.json'
@@ -91,7 +91,7 @@ def main(**kwargs):
 		    baseUrl,
 		    tenant=tenant['fvTenant']['attributes']['name'])
 		[logging.info(' ->' + bd['fvBD']['attributes']['name']) for bd in bdsTxt['imdata']]
-		
+
 
 if __name__ == '__main__':
 	main(**dict(arg.split('=') for arg in sys.argv[1:]))

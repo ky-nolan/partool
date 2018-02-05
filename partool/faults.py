@@ -10,10 +10,10 @@ coloredlogs.install()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def faults(apic, baseUrl):
+def faults(apic):
 	faultsUri = '/api/node/class/faultSummary.json?query-target-filter=' \
 	    'and()&order-by=faultSummary.severity'
-	faultsUrl = baseUrl + faultsUri
+	faultsUrl = apic.baseUrl + faultsUri
 	faultsResponse = apic.session.get(faultsUrl, verify=False)
 	utils.responseCheck(faultsResponse)
 	faultsJson = json.loads(faultsResponse.text)
@@ -38,12 +38,15 @@ def main(**kwargs):
 		wb = kwargs['filename']
 	else:
 		wb = 'discovery.xlsx'
-	faultsResponse = faults(apic, apic.baseUrl)
+	faultsResponse = faults(apic)
 	data = []
 	for fault in faultsResponse['imdata']:
 		data.append(fault['faultSummary']['attributes'])
 	writer = utils.writer(wb)
-	utils.dictDump(data, 'faults')
+	utils.dictDumpTwo(writer,
+	                  data,
+	                list(data[0].keys()),
+	                'faults')
 	apic.session.close()	
 
 if __name__ == '__main__':
