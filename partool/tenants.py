@@ -38,14 +38,14 @@ class tenant(object):
 		print('placeholder')
 
 
-def tenants(apicSession, baseUrl):
+def tenants(apic):
 	tnUri = '/api/class/fvTenant.json'
-	tnUrl = baseUrl + tnUri
-	tenantsResponse = apicSession.get(tnUrl, verify=False)
+	tnUrl = apic.baseUrl + tnUri
+	tenantsResponse = apic.session.get(tnUrl, verify=False)
 	tenantsJson = json.loads(tenantsResponse.text)
 	return tenantsJson
 
-def bds(apicSession, baseUrl, **kwargs):
+def bds(apic, **kwargs):
 	'''
 	'''
 	if 'tenant' in kwargs:
@@ -54,12 +54,12 @@ def bds(apicSession, baseUrl, **kwargs):
 		tnName = ''
 	bdUri = '/api/class/fvBD.json?' \
 	    'query-target-filter=wcard(fvBD.dn,"{}")'.format(tnName)
-	bdUrl = baseUrl + bdUri
-	bdResponse = apicSession.get(bdUrl, verify=False)
+	bdUrl = apic.baseUrl + bdUri
+	bdResponse = apic.session.get(bdUrl, verify=False)
 	bdJson = json.loads(bdResponse.text)
 	return bdJson
 
-def subnet(apicSession, baseUrl, **kwargs):
+def subnet(apic, **kwargs):
 	'''
 	'''
 	if 'bd' in kwargs:
@@ -73,24 +73,23 @@ def subnet(apicSession, baseUrl, **kwargs):
 	subnetUri = '/api/mo/uni/tn-{}/BD-{}.json?' \
 	    'rsp-subtree=children&rsp-subtree-filter' \
 	    '=eq(fvSubnet)'.format(tnName, bdName)
-	subnetUrl = baseUrl + subnetUri
-	subnetResponse = apicSession.get(subnetUrl, verify=False)
+	subnetUrl = apic.baseUrl + subnetUri
+	subnetResponse = apic.session.get(subnetUrl, verify=False)
 	subnetJson = json.loads(subnetResponse.text)
 	return subnetJson
 
 def main(**kwargs):
 	wb = 'discovery.xlsx'
-	apicSession, baseUrl = utils.login()
-	tenantsResponse = tenants(apicSession, baseUrl)
-	apicSession.close()
+	apic = utils.apicSession()
+	tenantsResponse = tenants(apic)
+	apic.session.close()
 	logging.info('Printing Tenants')
 	for tenant in tenantsResponse['imdata']:
 		logging.info(tenant['fvTenant']['attributes']['name'])
-		bdsTxt = bds(
-		    apicSession,
-		    baseUrl,
+		bdJson = bds(
+		    apic,
 		    tenant=tenant['fvTenant']['attributes']['name'])
-		[logging.info(' ->' + bd['fvBD']['attributes']['name']) for bd in bdsTxt['imdata']]
+		[logging.info(' ->' + bd['fvBD']['attributes']['name']) for bd in bdJson['imdata']]
 
 
 if __name__ == '__main__':

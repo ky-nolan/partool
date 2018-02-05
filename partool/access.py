@@ -139,12 +139,14 @@ def fabricBase(apic, *args, **kwargs):
 				logging.critical('node = vpc; link=discrete port-channel; <null> = access')
 				logging.critical('lagT value specified was {}'.format(lagT))
 				sys.exit()
-			time.sleep(3)
+			time.sleep(5)
 	if options.d == True:
 		logging.info('Deploying interface selectors from interfaces worksheet')
 		intfDf = pd.read_excel(filePath, sheet_name='interfaces')
 		for row in intfDf.iterrows():
 			postMoUni(env, apic, 'infraHPortS.json', row[1])
+                        logging.info('Deployed {} to interface profile
+                                {}'.format(row[1]['hPortS'], row[1]['accPortProf'])
 	time.sleep(3)
 	if options.s == True and options.w == '':
 		logging.critical('single post set, but worksheet option -w not specified')
@@ -190,6 +192,7 @@ def main(*args):
 	args, unknown = parser.parse_known_args()
 	apic = utils.apicSession()
 	fabricBase(apic,args,**dict(kwarg.split('=') for kwarg in unknown))
+	apic.session.close()
 
 if __name__ == '__main__':
 	main()
