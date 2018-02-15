@@ -62,6 +62,16 @@ def findCreds(jsonFile):
 				apicIp = str(d['apicIp'])
 				username = d['apicUsername']
 				password = d['apicPassword']
+				if not apicIp = '':
+					logging.info("APIC IP found in {}".format(jsonFile))
+				else:
+					try:
+						apicIp = str(input(
+							"APIC IP not specified in {}\n" \
+							"APIC IP:".format(jsonFile)))
+					except ValueError:
+						print('APIC IP')
+						apicIp = str(input())
 				if not username == '':
 					logging.info("APIC Username found in {}".format(jsonFile))
 				else:

@@ -2,9 +2,6 @@
 FROM ubuntu
 # Dockerfile author/maintainer
 MAINTAINER Name fancytyphoonkitty3@gmail.com
-# Create and change to directory for partool
-ADD . /partool
-WORKDIR /partool
 # Update app repo list and install pre-reqs
 RUN apt-get update \
 	&& apt-get install -y software-properties-common \
@@ -13,5 +10,8 @@ RUN apt-get update \
 	python3.6 \
 	python-pip \
 	git-core \
-	build-essential \
+	vim \
 	&& apt-get clean
+# Clone partool and install pre-reqs
+RUN git clone https://github.com/fancyTyphoonKitty/partool \
+	&& pip install -r partool/requirements.txt
