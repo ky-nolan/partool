@@ -1,0 +1,17 @@
+# Set the base image
+FROM ubuntu
+# Dockerfile author/maintainer
+MAINTAINER Name fancytyphoonkitty3@gmail.com
+# Create and change to directory for partool
+ADD . /partool
+WORKDIR /partool
+# Update app repo list and install pre-reqs
+RUN apt-get update \
+	&& apt-get install -y software-properties-common \
+	&& add-apt-repository ppa:jonathonf/python-3.6 \
+	&& apt-get update && apt-get install -y \
+	python3.6 \
+	python-pip \
+	git-core \
+	build-essential \
+	&& apt-get clean

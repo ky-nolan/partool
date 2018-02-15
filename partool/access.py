@@ -145,7 +145,7 @@ def fabricBase(apic, *args, **kwargs):
 		intfDf = pd.read_excel(filePath, sheet_name='interfaces')
 		for row in intfDf.iterrows():
 			postMoUni(env, apic, 'infraHPortS.json', row[1])
-                        logging.info('Deployed {} to interface profile
+                        logging.info('Deployed {} to interface profile \
                                 {}'.format(row[1]['hPortS'], row[1]['accPortProf'])
 	time.sleep(3)
 	if options.s == True and options.w == '':

@@ -9,8 +9,7 @@ profiles.
 profiles.
 	3) -p ; read in data from interfacePolGrps worksheet in xlsx file and creates interface policy
 groups.
-	4) -d ; read in data from nodes worksheet in xlsx file and creates interface policy
-groups.
+	4) -d ; read in data from interfaces worksheet in xlsx file and creates interface selectors
 
 ## discovery module
 Used to collect information about an existing fabric (Only uses HTTP GET Method). It is a command
