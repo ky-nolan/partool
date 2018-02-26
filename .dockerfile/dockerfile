@@ -10,7 +10,6 @@ RUN apt-get update \
 	python3.6 \
 	python-pip \
 	git-core \
-	vim \
 	&& apt-get clean
 # Clone partool and install pre-reqs
 RUN git clone https://github.com/fancyTyphoonKitty/partool \

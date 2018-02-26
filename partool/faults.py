@@ -40,14 +40,19 @@ def main(**kwargs):
 		wb = 'discovery.xlsx'
 	faultsResponse = faults(apic)
 	data = []
-	for fault in faultsResponse['imdata']:
-		data.append(fault['faultSummary']['attributes'])
-	writer = utils.writer(wb)
-	utils.dictDumpTwo(writer,
-	                  data,
-	                list(data[0].keys()),
-	                'faults')
-	apic.session.close()	
+	try:
+		for fault in faultsResponse['imdata']:
+			data.append(fault['faultSummary']['attributes'])
+			writer = utils.writer(wb)
+			utils.dictDumpTwo(writer,
+			                  data,
+			                  list(data[0].keys()),
+			                  'faults')
+	except:
+		logging.critical('Error iterating through faults. Exiting')
+		apic.session.close()
+		sys.exit()
+	apic.session.close()
 
 if __name__ == '__main__':
 	main(**dict(arg.split('=') for arg in sys.argv[1:]))

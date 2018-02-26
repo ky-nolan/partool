@@ -62,7 +62,7 @@ def findCreds(jsonFile):
 				apicIp = str(d['apicIp'])
 				username = d['apicUsername']
 				password = d['apicPassword']
-				if not apicIp = '':
+				if apicIp != '':
 					logging.info("APIC IP found in {}".format(jsonFile))
 				else:
 					try:
@@ -189,3 +189,22 @@ def template(env, jsonFile):
 	'''
 	template = env.get_template(jsonFile)
 	return template
+
+def postMo(apic, uri, template, args):
+	'''
+	generic function to generate JSON payloads from
+	jinja2 templates and posting to a pass URI.
+	'''
+	# Load jinja2 templates
+	env = loader()
+	
+	# Append URI to APIC URL
+	uniUrl = apic.baseUrl + uri
+	
+	# load and render template
+	payloadTemplate = env.get_template(template)
+	payload = payloadTemplate.render(args=args)
+	logging.info(payload)
+	response = apic.session.post(uniUrl, verify=False, data=payload)
+	responseCheck(response)
+	return response

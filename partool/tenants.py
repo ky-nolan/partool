@@ -17,7 +17,6 @@ class tenant(object):
 
 	Attributes:
 	name: A string representing the Tenant's name
-
 	'''
 	def __init__(self, name):
 		'''
