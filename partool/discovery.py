@@ -4,40 +4,19 @@ import logging
 import requests
 import utils
 import sys
+from faults import faults
 
 requests.packages.urllib3.disable_warnings()
 coloredlogs.install()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class tenant(object):
-	'''
-	Object that represents a Tenant Object and includes functions to retrieve lists
-	of child
-
-	Attributes:
-	name: A string representing the Tenant's name
-	'''
-	def __init__(self, name):
-		'''
-		Return a Tenant object whose name is *name* 
-		'''
-		self.name = name
-		self.dn = ''
-		self.nameAlias = ''
-
-	def __dict__(self):
-		print('placeholder')
-
-	def getVrfs(self):
-		print('placeholder')
-
-	def getBds(self):
-		print('placeholder')
-
-	def getEpgs(self):
-		print('placeholder')
-
+def dhcpClient(apic):
+	dhcpClientUri = '/api/node/class/dhcpClient.json'
+	dhcpClientUrl = apic.baseUrl + dhcpClientUri
+	dhcpClientResp = apic.session.get(dhcpClientUrl, verify=False)
+	dhcpClientJson = json.loads(dhcpClientResp.text)
+	return dhcpClientJson['imdata']
 
 def tenants(apic):
 	tnUri = '/api/class/fvTenant.json?rsp-prop-include=config-only'
@@ -106,6 +85,24 @@ def epgs(apic, **kwargs):
 	epgJson = json.loads(epgResp.text)
 	return epgJson['imdata']
 
+def fvRsBd(apic, **kwargs):
+	try:
+		rsBdUri = '/api/node/mo/uni/tn-{}/ap-{}/epg-{}.json?' \
+			'query-target=children&' \
+			'target-subtree-class=fvRsBd'.format(kwargs['tenant'],
+												kwargs['app'],
+												kwargs['epg'])
+		rsBdUrl = apic.baseUrl + rsBdUri
+		rsBdResp = apic.session.get(rsBdUrl, verify=False)
+		rsBdJson = json.loads(rsBdResp.text)
+		return rsBdJson['imdata']
+	except KeyError:
+		logging.critical('Invalid or incomplete kwargs passed to fvRsBd')
+		logging.critical('Must pass tenant, app, and epg keyword arguments')
+		logging.critical('Exiting!')
+		sys.exit()
+	except Exception as ex:
+		utils.exceptTempl(ex)
 
 def main(**kwargs):
 	# Set Variables
@@ -123,11 +120,57 @@ def main(**kwargs):
 	epgCols = ['tenant',
 			'app',
 			'epg',
+			'nameAlias',
+			'bd',
 			'bdTenant',
-			'bd']
+			'prefGroupMember',
+			'pcTag']
+	dhcpData = []
+	dhcpCols = ['podId',
+				'fabricId',
+				'nodeId',
+				'model',
+				'name',
+				'nameAlias',
+				'configNodeRole',
+				'nodeRole',
+				'nodeType',
+				'ip',
+				'spineLevel',
+				'fwVer',
+				'runningVer',
+				'supported',
+				'extPoolId',
+				'decommissioned',
+				'configIssues'
+	]
 
 	# Create login session to APIC
 	apic = utils.apicSession()
+
+	# Get Fabric Info
+	dhcpClientData = dhcpClient(apic)
+	for node in dhcpClientData:
+		dhcpData.append((
+				node['dhcpClient']['attributes']['podId'],
+				node['dhcpClient']['attributes']['fabricId'],
+				node['dhcpClient']['attributes']['nodeId'],
+				node['dhcpClient']['attributes']['model'],
+				node['dhcpClient']['attributes']['name'],
+				node['dhcpClient']['attributes']['nameAlias'],
+				node['dhcpClient']['attributes']['configNodeRole'],
+				node['dhcpClient']['attributes']['nodeRole'],
+				node['dhcpClient']['attributes']['nodeType'],
+				node['dhcpClient']['attributes']['ip'],
+				node['dhcpClient']['attributes']['spineLevel'],
+				node['dhcpClient']['attributes']['fwVer'],
+				node['dhcpClient']['attributes']['runningVer'],
+				node['dhcpClient']['attributes']['supported'],
+				node['dhcpClient']['attributes']['extPoolId'],
+				node['dhcpClient']['attributes']['decomissioned'],
+				node['dhcpClient']['attributes']['configIssues']
+			)
+		)
 
 	# Get the current tenants
 	tenantsResp = tenants(apic)
@@ -179,21 +222,48 @@ def main(**kwargs):
 						logging.info('No EPGs found in App Profile {}'.format(app['fvAp']['attributes']['name']))
 					else:
 						for epg in epgResp:
-							epgData.append((
-								tenant['fvTenant']['attributes']['name'],
-								app['fvAp']['attributes']['name'],
-								epg['fvAEPg']['attributes']['name'],
-								epg['fvAEPg']['attributes']['nameAlias'],
-								epg['fvAEPg']['attributes']['prefGrMemb'],
-								epg['fvAEPg']['attributes']['pcTag']
-								)
+							rsBd = fvRsBd(apic,
+							tenant=tenant['fvTenant']['attributes']['name'],
+							app=app['fvAp']['attributes']['name'],
+							epg=epg['fvAEPg']['attributes']['name']
 							)
-	for aepG in epgData:
-		logging.info(aepG)
+							if not rsBd:
+								epgData.append((
+									tenant['fvTenant']['attributes']['name'],
+									app['fvAp']['attributes']['name'],
+									epg['fvAEPg']['attributes']['name'],
+									epg['fvAEPg']['attributes']['nameAlias'],
+									'',
+									'',
+									epg['fvAEPg']['attributes']['prefGrMemb'],
+									epg['fvAEPg']['attributes']['pcTag']
+									)
+								)
+							else:
+								epgData.append((
+									tenant['fvTenant']['attributes']['name'],
+									app['fvAp']['attributes']['name'],
+									epg['fvAEPg']['attributes']['name'],
+									epg['fvAEPg']['attributes']['nameAlias'],
+									rsBd[0]['fvRsBd']['attributes']['tnFvBDName'],
+									rsBd[0]['fvRsBd']['attributes']['dn'].split('tn-')[1].split('/')[0],
+									epg['fvAEPg']['attributes']['prefGrMemb'],
+									epg['fvAEPg']['attributes']['pcTag']
+									)
+								)
 	writer = utils.writer(wb)
-	utils.dictDumpTwo(writer, tnData, tnCols, 'fvTenant')
-	utils.dictDumpTwo(writer, bdData, bdCols, 'fvBD')
-	apic.session.close()
+	try:
+		faults(writer=writer)
+		utils.dictDumpTwo(writer, dhcpData, dhcpCols, 'dhcpClient')
+		utils.dictDumpTwo(writer, tnData, tnCols, 'fvTenant')
+		utils.dictDumpTwo(writer, bdData, bdCols, 'fvBD')
+		utils.dictDumpTwo(writer, epgData, epgCols, 'fvAEPg')
+		apic.session.close()
+	except AssertionError:
+		raise AssertionError
+	except Exception as ex:
+		utils.exceptTempl(ex)
+
 
 if __name__ == '__main__':
 	main(**dict(arg.split('=') for arg in sys.argv[1:]))

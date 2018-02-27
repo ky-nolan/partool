@@ -10,36 +10,42 @@ coloredlogs.install()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def faults(apic):
-	faultsUri = '/api/node/class/faultSummary.json?query-target-filter=' \
-	    'and()&order-by=faultSummary.severity'
-	faultsUrl = apic.baseUrl + faultsUri
-	faultsResponse = apic.session.get(faultsUrl, verify=False)
-	utils.responseCheck(faultsResponse)
-	faultsJson = json.loads(faultsResponse.text)
-	return faultsJson
-
-def main(**kwargs):
+def faults(**kwargs):
 	apic = utils.apicSession()
 	if 'filename' in kwargs:
 		wb = kwargs['filename']
 	else:
 		wb = 'discovery.xlsx'
-	faultsResponse = faults(apic)
+	if 'writer' in kwargs:
+		writer = kwargs['writer']
+	else:
+		writer = utils.writer(wb)
+	faultsUri = '/api/node/class/faultSummary.json?query-target-filter=' \
+	    'and()&order-by=faultSummary.severity'
+	faultsUrl = apic.baseUrl + faultsUri
+	faultsResp = apic.session.get(faultsUrl, verify=False)
+	utils.responseCheck(faultsResp)
+	faultsJson = json.loads(faultsResp.text)
 	data = []
 	try:
-		for fault in faultsResponse['imdata']:
+		for fault in faultsJson['imdata']:
 			data.append(fault['faultSummary']['attributes'])
-			writer = utils.writer(wb)
-			utils.dictDumpTwo(writer,
-			                  data,
-			                  list(data[0].keys()),
-			                  'faults')
 	except:
 		logging.critical('Error iterating through faults. Exiting')
 		apic.session.close()
 		sys.exit()
 	apic.session.close()
+	utils.dictDumpTwo(writer,
+			        data,
+			        list(data[0].keys()),
+			        'faultSummary')
+
+def main(**kwargs):
+	if not kwargs:
+		faults()
+	else:
+		faults(**kwargs)
+
 
 if __name__ == '__main__':
 	main(**dict(arg.split('=') for arg in sys.argv[1:]))

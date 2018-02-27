@@ -148,6 +148,9 @@ def login():
 		else:
 			logging.info("Connection to APIC successful")
 
+def exceptTempl(exception):
+	logging.critical('An exception of type {} occured'.format(type(exception)))
+
 def dictDump(writer, data, ws):
 	'''
 	'''
@@ -197,10 +200,10 @@ def postMo(apic, uri, template, args):
 	'''
 	# Load jinja2 templates
 	env = loader()
-	
+
 	# Append URI to APIC URL
 	uniUrl = apic.baseUrl + uri
-	
+
 	# load and render template
 	payloadTemplate = env.get_template(template)
 	payload = payloadTemplate.render(args=args)
