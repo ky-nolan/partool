@@ -20,19 +20,6 @@ def faults(apic):
 	return faultsJson
 
 def main(**kwargs):
-	'''
-	apicSession, baseUrl = utils.login()
-	if 'filename' in kwargs:
-		wb = kwargs['filename']
-	else:
-		wb = 'discovery.xlsx'
-	faultsResponse = faults(apicSession, baseUrl)
-	data = []
-	for fault in faultsResponse['imdata']:
-	data.append(fault['faultSummary']['attributes'])
-	utils.dictDump(data, wb, 'faults')
-	apicSession.close()
-	'''
 	apic = utils.apicSession()
 	if 'filename' in kwargs:
 		wb = kwargs['filename']

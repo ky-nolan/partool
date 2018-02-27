@@ -97,7 +97,7 @@ def main():
 	noShutArgs = {
 	    'dn': 'uni/fabric/outofsvc/rsoosPath-[topology/pod-{}/paths-{}/pathep-[eth1/{}]]'.format(str(pod),node,port),
 	    'status': 'deleted'
-	}	
+	}
 	# Re-enable the port
 	resp = utils.postMo(ls,
 	                    '/api/node/mo/uni/fabric/outofsvc.json',
