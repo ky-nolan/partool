@@ -11,79 +11,11 @@ coloredlogs.install()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def dhcpClient(apic):
-	dhcpClientUri = '/api/node/class/dhcpClient.json'
-	dhcpClientUrl = apic.baseUrl + dhcpClientUri
-	dhcpClientResp = apic.session.get(dhcpClientUrl, verify=False)
-	dhcpClientJson = json.loads(dhcpClientResp.text)
-	return dhcpClientJson['imdata']
-
-def tenants(apic):
-	tnUri = '/api/class/fvTenant.json?rsp-prop-include=config-only'
-	tnUrl = apic.baseUrl + tnUri
-	tenantsResp = apic.session.get(tnUrl, verify=False)
-	tenantsJson = json.loads(tenantsResp.text)
-	return tenantsJson['imdata']
-
-def bds(apic, **kwargs):
-	'''
-	'''
-	if 'tenant' in kwargs:
-		tnName = kwargs['tenant']
-	else:
-		tnName = ''
-	bdUri = '/api/class/fvBD.json?' \
-	    'query-target-filter=wcard(fvBD.dn,"{}")&rsp-prop-include=config-only'.format(tnName)
-	bdUrl = apic.baseUrl + bdUri
-	bdResponse = apic.session.get(bdUrl, verify=False)
-	bdJson = json.loads(bdResponse.text)
-	return bdJson['imdata']
-
-def subnet(apic, **kwargs):
-	'''
-	'''
-	if 'bd' in kwargs:
-		bdName = kwargs['bd']
-	else:
-		bdName = ''
-	if 'tenant' in kwargs:
-		tnName = kwargs['tenant']
-	else:
-		tnName = ''
-	subnetUri = '/api/class/fvSubnet.json?query-target-filter=' \
-		'wcard(fvSubnet.dn,"tn-{}/BD-{}/")'.format(tnName, bdName)
-	subnetUrl = apic.baseUrl + subnetUri
-	subnetResponse = apic.session.get(subnetUrl, verify=False)
-	subnetJson = json.loads(subnetResponse.text)
-	return subnetJson['imdata']
-
-def ap(apic, **kwargs):
-	if 'tenant' in kwargs:
-		tnName = kwargs['tenant']
-	else:
-		tnName = ''
-	apUri = '/api/class/fvAp.json?query-target-filter=wcard(fvAp.dn, '\
-		'"tn-{}")'.format(tnName)
-	apUrl = apic.baseUrl + apUri
-	apResp = apic.session.get(apUrl, verify=False)
-	apJson = json.loads(apResp.text)
-	return apJson['imdata']
-
-def epgs(apic, **kwargs):
-	if 'tenant' in kwargs:
-		tnName = kwargs['tenant']
-	else:
-		tnName = ''
-	if 'ap' in kwargs:
-		apName = kwargs['ap']
-	else:
-		apName = ''
-	epgUri = '/api/class/fvAEPg.json?query-target-filter=wcard(fvAEPg.dn, '\
-		'"tn-{}/ap-{}/")'.format(tnName, apName)
-	epgUrl = apic.baseUrl + epgUri
-	epgResp = apic.session.get(epgUrl, verify=False)
-	epgJson = json.loads(epgResp.text)
-	return epgJson['imdata']
+def get(apic, url):
+	resp = apic.session.get(url, verify=False)
+	utils.responseCheck(resp)
+	data = json.loads(resp.text)
+	return data['imdata']
 
 def fvRsBd(apic, **kwargs):
 	try:
@@ -149,7 +81,7 @@ def main(**kwargs):
 	apic = utils.apicSession()
 
 	# Get Fabric Info
-	dhcpClientData = dhcpClient(apic)
+	dhcpClientData = get(apic, apic.baseUrl + '/api/node/class/dhcpClient.json')
 	for node in dhcpClientData:
 		dhcpData.append((
 				node['dhcpClient']['attributes']['podId'],
@@ -173,7 +105,7 @@ def main(**kwargs):
 		)
 
 	# Get the current tenants
-	tenantsResp = tenants(apic)
+	tenantsResp = get(apic, apic.baseUrl + '/api/class/fvTenant.json?rsp-prop-include=config-only')
 
 	'''
 	 Loop through tenants and collect additional information. Including:
@@ -188,11 +120,14 @@ def main(**kwargs):
 	'''
 	for tenant in tenantsResp:
 		tnData.append(tenant['fvTenant']['attributes'])
-		bdResp = bds(apic,tenant=tenant['fvTenant']['attributes']['name'])
+		bdResp = get(apic, apic.baseUrl + '/api/class/fvBD.json?' \
+	    	'query-target-filter=wcard(fvBD.dn,"{}")&rsp-prop-' \
+	    	'include=config-only'.format(tenant['fvTenant']['attributes']['name']))
 		for bd in bdResp:
-			subnetResp = subnet(apic,
-								bd=bd['fvBD']['attributes']['name'],
-								tenant=tenant['fvTenant']['attributes']['name'])
+			subnetResp = get(apic,
+				apic.baseUrl + '/api/class/fvSubnet.json?query-target-filter=' \
+				'wcard(fvSubnet.dn,"tn-{}/BD-{}/")'.format(tenant['fvTenant']['attributes']['name'], 
+				bd['fvBD']['attributes']['name']))
 			if not subnetResp:
 				bdData.append((
 					tenant['fvTenant']['attributes']['name'],
@@ -210,23 +145,27 @@ def main(**kwargs):
 						sub['fvSubnet']['attributes']['scope'],
 						sub['fvSubnet']['attributes']['preferred'],
 						sub['fvSubnet']['attributes']['virtual']))
-			apResp = ap(apic, tenant=tenant['fvTenant']['attributes']['name'])
+			apResp = get(apic, apic.baseUrl + '/api/class/fvAp.json?query-target-filter=wcard(fvAp.dn,' \
+				'"tn-{}")'.format(tenant['fvTenant']['attributes']['name']))
 			if not apResp:
-				logging.info('No App Profiles Found in Tenant {}'.format(tenant['fvTenant']['attributes']['name']))
+				logging.info('No ANP in Tn {}}'.format(tenant['fvTenant']['attributes']['name']))
 			else:
 				for app in apResp:
-					epgResp = epgs(apic,
-								tenant=tenant['fvTenant']['attributes']['name'],
-								ap=app['fvAp']['attributes']['name'])
+					epgResp = get(apic,
+								apic.baseUrl + '/api/class/fvAEPg.json?' \
+								'query-target-filter=wcard(fvAEPg.dn, '  \
+								'"tn-{}/ap-{}/")'.format(tenant['fvTenant']['attributes']['name'],
+									app['fvAp']['attributes']['name']))
 					if not epgResp:
 						logging.info('No EPGs found in App Profile {}'.format(app['fvAp']['attributes']['name']))
 					else:
 						for epg in epgResp:
-							rsBd = fvRsBd(apic,
-							tenant=tenant['fvTenant']['attributes']['name'],
-							app=app['fvAp']['attributes']['name'],
-							epg=epg['fvAEPg']['attributes']['name']
-							)
+							rsBd = get(apic,
+								apic.baseUrl + '/api/node/mo/uni/tn-{}/ap-{}/epg-{}.json?' \
+									'query-target=children&target-subtree-class=fvRsBd'.format(
+										tenant['fvTenant']['attributes']['name'],
+										app['fvAp']['attributes']['name'],
+										epg['fvAEPg']['attributes']['name']))
 							if not rsBd:
 								epgData.append((
 									tenant['fvTenant']['attributes']['name'],
@@ -253,7 +192,7 @@ def main(**kwargs):
 								)
 	writer = utils.writer(wb)
 	try:
-		faults(writer=writer)
+		faults(apic, writer=writer)
 		utils.dictDumpTwo(writer, dhcpData, dhcpCols, 'dhcpClient')
 		utils.dictDumpTwo(writer, tnData, tnCols, 'fvTenant')
 		utils.dictDumpTwo(writer, bdData, bdCols, 'fvBD')

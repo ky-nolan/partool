@@ -10,8 +10,7 @@ coloredlogs.install()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def faults(**kwargs):
-	apic = utils.apicSession()
+def faults(apic, **kwargs):
 	if 'filename' in kwargs:
 		wb = kwargs['filename']
 	else:
@@ -41,10 +40,11 @@ def faults(**kwargs):
 			        'faultSummary')
 
 def main(**kwargs):
+	apic = utils.apicSession()
 	if not kwargs:
-		faults()
+		faults(apic)
 	else:
-		faults(**kwargs)
+		faults(apic, **kwargs)
 
 
 if __name__ == '__main__':
