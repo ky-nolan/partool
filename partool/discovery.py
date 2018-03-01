@@ -37,8 +37,12 @@ def fvRsBd(apic, **kwargs):
 		utils.exceptTempl(ex)
 
 def main(**kwargs):
+	if 'filename' in kwargs:
+		wb = kwargs['filename']
+	else:
+		wb = 'discovery.xlsx'
 	# Set Variables
-	wb = 'discovery.xlsx'
+
 	tnData = []
 	tnCols = ['descr', 'dn', 'name', 'nameAlias', 'ownerKey','ownerTag']
 	bdData = []
@@ -105,7 +109,8 @@ def main(**kwargs):
 		)
 
 	# Get the current tenants
-	tenantsResp = get(apic, apic.baseUrl + '/api/class/fvTenant.json?rsp-prop-include=config-only')
+	tenantsResp = get(apic, apic.baseUrl + '/api/class/fvTenant.json?' \
+	                  'rsp-prop-include=config-only')
 
 	'''
 	 Loop through tenants and collect additional information. Including:
@@ -121,8 +126,8 @@ def main(**kwargs):
 	for tenant in tenantsResp:
 		tnData.append(tenant['fvTenant']['attributes'])
 		bdResp = get(apic, apic.baseUrl + '/api/class/fvBD.json?' \
-	    	'query-target-filter=wcard(fvBD.dn,"{}")&rsp-prop-' \
-	    	'include=config-only'.format(tenant['fvTenant']['attributes']['name']))
+		             'query-target-filter=wcard(fvBD.dn,"{}")&rsp-prop-' \
+		             'include=config-only'.format(tenant['fvTenant']['attributes']['name']))
 		for bd in bdResp:
 			subnetResp = get(apic,
 				apic.baseUrl + '/api/class/fvSubnet.json?query-target-filter=' \
@@ -145,51 +150,51 @@ def main(**kwargs):
 						sub['fvSubnet']['attributes']['scope'],
 						sub['fvSubnet']['attributes']['preferred'],
 						sub['fvSubnet']['attributes']['virtual']))
-			apResp = get(apic, apic.baseUrl + '/api/class/fvAp.json?query-target-filter=wcard(fvAp.dn,' \
-				'"tn-{}")'.format(tenant['fvTenant']['attributes']['name']))
-			if not apResp:
-				logging.info('No ANP in Tn {}}'.format(tenant['fvTenant']['attributes']['name']))
-			else:
-				for app in apResp:
-					epgResp = get(apic,
-								apic.baseUrl + '/api/class/fvAEPg.json?' \
-								'query-target-filter=wcard(fvAEPg.dn, '  \
-								'"tn-{}/ap-{}/")'.format(tenant['fvTenant']['attributes']['name'],
-									app['fvAp']['attributes']['name']))
-					if not epgResp:
-						logging.info('No EPGs found in App Profile {}'.format(app['fvAp']['attributes']['name']))
-					else:
-						for epg in epgResp:
-							rsBd = get(apic,
-								apic.baseUrl + '/api/node/mo/uni/tn-{}/ap-{}/epg-{}.json?' \
-									'query-target=children&target-subtree-class=fvRsBd'.format(
-										tenant['fvTenant']['attributes']['name'],
-										app['fvAp']['attributes']['name'],
-										epg['fvAEPg']['attributes']['name']))
-							if not rsBd:
-								epgData.append((
-									tenant['fvTenant']['attributes']['name'],
-									app['fvAp']['attributes']['name'],
-									epg['fvAEPg']['attributes']['name'],
-									epg['fvAEPg']['attributes']['nameAlias'],
-									'',
-									'',
-									epg['fvAEPg']['attributes']['prefGrMemb'],
-									epg['fvAEPg']['attributes']['pcTag']
-									)
-								)
-							else:
-								epgData.append((
-									tenant['fvTenant']['attributes']['name'],
-									app['fvAp']['attributes']['name'],
-									epg['fvAEPg']['attributes']['name'],
-									epg['fvAEPg']['attributes']['nameAlias'],
-									rsBd[0]['fvRsBd']['attributes']['tnFvBDName'],
-									rsBd[0]['fvRsBd']['attributes']['dn'].split('tn-')[1].split('/')[0],
-									epg['fvAEPg']['attributes']['prefGrMemb'],
-									epg['fvAEPg']['attributes']['pcTag']
-									)
-								)
+		apResp = get(apic, apic.baseUrl + '/api/class/fvAp.json?query-target-filter=wcard('\
+	        'fvAp.dn,"tn-{}")'.format(tenant['fvTenant']['attributes']['name']))
+		if not apResp:
+			pass
+		else:
+			for app in apResp:
+				epgResp = get(apic,
+			                apic.baseUrl + '/api/class/fvAEPg.json?' \
+			                'query-target-filter=wcard(fvAEPg.dn, '  \
+			                '"tn-{}/ap-{}/")'.format(tenant['fvTenant']['attributes']['name'],
+			                    app['fvAp']['attributes']['name']))
+				if not epgResp:
+					pass
+				else:
+					for epg in epgResp:
+						rsBd = get(apic,
+					        apic.baseUrl + '/api/node/mo/uni/tn-{}/ap-{}/epg-{}.json?' \
+					            'query-target=children&target-subtree-class=fvRsBd'.format(
+					                tenant['fvTenant']['attributes']['name'],
+					                app['fvAp']['attributes']['name'],
+					                epg['fvAEPg']['attributes']['name']))
+						if not rsBd:
+							epgData.append((
+						        tenant['fvTenant']['attributes']['name'],
+						        app['fvAp']['attributes']['name'],
+						        epg['fvAEPg']['attributes']['name'],
+						        epg['fvAEPg']['attributes']['nameAlias'],
+						        '',
+						        '',
+						        epg['fvAEPg']['attributes']['prefGrMemb'],
+						        epg['fvAEPg']['attributes']['pcTag']
+						        )
+						    )
+						else:
+							epgData.append((
+						        tenant['fvTenant']['attributes']['name'],
+						        app['fvAp']['attributes']['name'],
+						        epg['fvAEPg']['attributes']['name'],
+						        epg['fvAEPg']['attributes']['nameAlias'],
+						        rsBd[0]['fvRsBd']['attributes']['tnFvBDName'],
+						        rsBd[0]['fvRsBd']['attributes']['dn'].split('tn-')[1].split('/')[0],
+						        epg['fvAEPg']['attributes']['prefGrMemb'],
+						        epg['fvAEPg']['attributes']['pcTag']
+						        )
+						    )
 	writer = utils.writer(wb)
 	try:
 		faults(apic, writer=writer)

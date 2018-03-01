@@ -151,13 +151,6 @@ def login():
 def exceptTempl(exception):
 	logging.critical('An exception of type {} occured'.format(type(exception)))
 
-def dictDump(writer, data, ws):
-	'''
-	'''
-	df = pd.DataFrame(data)
-	df.to_excel(writer, sheet_name=ws)
-	return logger.info('{} data written successfully!'.format(ws))
-
 def dictDumpTwo(writer, data, columnNames, ws):
 	'''
 	'''
