@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import coloredlogs
 import logging
 import json
@@ -121,7 +123,6 @@ class apicSession(object):
 			responseCheck(p)
 			return s
 
-
 def responseCheck(response):
 	'''
 	Check if response status code is 200 and do nothing if it is. If value
@@ -151,7 +152,29 @@ def login():
 def exceptTempl(exception):
 	logging.critical('An exception of type {} occured'.format(type(exception)))
 
-def dictDumpTwo(writer, data, columnNames, ws):
+def xlsxCleanup():
+	pass
+
+def cleanListDict(items):
+	cleanList = []
+	for item in items:
+		for k,v in enumerate(item):
+			cleanList.append(item[v]['attributes'])
+
+	badKeys = [
+	    '',
+    	'',
+		'',
+		'',
+	    '',
+	    '',
+        '',
+        '',
+	]
+
+	return cleanList
+
+def dictDumpTwo(writer,data,columnNames,ws):
 	'''
 	'''
 	df = pd.DataFrame(data, columns=columnNames)
@@ -174,7 +197,7 @@ def loader():
 	env.filters['jsonify'] = json.dumps
 	return env
 
-def template(env, jsonFile):
+def template(env,jsonFile):
 	'''
 	Function loads a specified JSON/jinja2 template
 
@@ -186,7 +209,13 @@ def template(env, jsonFile):
 	template = env.get_template(jsonFile)
 	return template
 
-def postMo(apic, uri, template, args):
+def get(apic,url):
+	resp = apic.session.get(url,verify=False)
+	responseCheck(resp)
+	data = json.loads(resp.text)
+	return data['imdata']
+
+def postMo(apic,uri,template,args):
 	'''
 	generic function to generate JSON payloads from
 	jinja2 templates and posting to a pass URI.

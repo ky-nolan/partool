@@ -21,3 +21,12 @@ venv*/
 
 # macos
 *DS_Store*
+
+# vscode
+.vscode/
+
+# files with backup files
+*backup*
+
+# sublime workspace files
+*.sublime-workspace

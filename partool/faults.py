@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import coloredlogs
 import json
 import logging

@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
+
 import coloredlogs
 import json
 import logging
 import requests
 import utils
 import sys
+import time
 from faults import faults
 
 requests.packages.urllib3.disable_warnings()
@@ -11,19 +14,21 @@ coloredlogs.install()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def get(apic, url):
 	resp = apic.session.get(url, verify=False)
 	utils.responseCheck(resp)
 	data = json.loads(resp.text)
 	return data['imdata']
 
+
 def fvRsBd(apic, **kwargs):
 	try:
 		rsBdUri = '/api/node/mo/uni/tn-{}/ap-{}/epg-{}.json?' \
-			'query-target=children&' \
-			'target-subtree-class=fvRsBd'.format(kwargs['tenant'],
-												kwargs['app'],
-												kwargs['epg'])
+			'query-target=children&target-subtree-class=fvRs' \
+		    'Bd'.format(kwargs['tenant'],
+		    kwargs['app'],
+		    kwargs['epg'])
 		rsBdUrl = apic.baseUrl + rsBdUri
 		rsBdResp = apic.session.get(rsBdUrl, verify=False)
 		rsBdJson = json.loads(rsBdResp.text)
@@ -37,12 +42,14 @@ def fvRsBd(apic, **kwargs):
 		utils.exceptTempl(ex)
 
 def main(**kwargs):
-	if 'filename' in kwargs:
-		wb = kwargs['filename']
-	else:
-		wb = 'discovery.xlsx'
-	# Set Variables
 
+	# Set Variables
+	date = time.strftime("%Y%m%d")
+	if 'filename' in kwargs:
+		wb = date + '-' + kwargs['filename']
+	else:
+
+		wb = date + '-discovery.xlsx'
 	tnData = []
 	tnCols = ['descr', 'dn', 'name', 'nameAlias', 'ownerKey','ownerTag']
 	bdData = []
@@ -50,8 +57,8 @@ def main(**kwargs):
 			'bdName',
 			'subnetIp',
 			'subnetScope',
-			'subnetPref',
-			'subnetVirtual']
+			'primaryIp',
+			'virtualIp']
 	epgData = []
 	epgCols = ['tenant',
 			'app',
@@ -59,8 +66,7 @@ def main(**kwargs):
 			'nameAlias',
 			'bd',
 			'bdTenant',
-			'prefGroupMember',
-			'pcTag']
+			'prefGroupMember']
 	dhcpData = []
 	dhcpCols = ['podId',
 				'fabricId',
@@ -78,33 +84,42 @@ def main(**kwargs):
 				'supported',
 				'extPoolId',
 				'decommissioned',
-				'configIssues'
-	]
+				'configIssues']
+	nodePData = []
+	nodePCols = ['name',
+	             'descr',
+	             'dn',
+	             'leafSelector']
+	rsAccPortPData = []
+	rsAccPortPCols = ['nodeP',
+	                  'interfaceProfile',
+	                  'dn']
 
 	# Create login session to APIC
 	apic = utils.apicSession()
 
 	# Get Fabric Info
-	dhcpClientData = get(apic, apic.baseUrl + '/api/node/class/dhcpClient.json')
-	for node in dhcpClientData:
+	dhcpClientData = get(apic,apic.baseUrl + '/api/node/class/dhcpClient.json')
+	dhcpClientList = utils.cleanListDict(dhcpClientData)
+	for node in dhcpClientList:
 		dhcpData.append((
-				node['dhcpClient']['attributes']['podId'],
-				node['dhcpClient']['attributes']['fabricId'],
-				node['dhcpClient']['attributes']['nodeId'],
-				node['dhcpClient']['attributes']['model'],
-				node['dhcpClient']['attributes']['name'],
-				node['dhcpClient']['attributes']['nameAlias'],
-				node['dhcpClient']['attributes']['configNodeRole'],
-				node['dhcpClient']['attributes']['nodeRole'],
-				node['dhcpClient']['attributes']['nodeType'],
-				node['dhcpClient']['attributes']['ip'],
-				node['dhcpClient']['attributes']['spineLevel'],
-				node['dhcpClient']['attributes']['fwVer'],
-				node['dhcpClient']['attributes']['runningVer'],
-				node['dhcpClient']['attributes']['supported'],
-				node['dhcpClient']['attributes']['extPoolId'],
-				node['dhcpClient']['attributes']['decomissioned'],
-				node['dhcpClient']['attributes']['configIssues']
+				node['podId'],
+				node['fabricId'],
+				node['nodeId'],
+				node['model'],
+				node['name'],
+				node['nameAlias'],
+				node['configNodeRole'],
+				node['nodeRole'],
+				node['nodeType'],
+				node['ip'],
+				node['spineLevel'],
+				node['fwVer'],
+				node['runningVer'],
+				node['supported'],
+				node['extPoolId'],
+				node['decomissioned'],
+				node['configIssues']
 			)
 		)
 
@@ -123,85 +138,129 @@ def main(**kwargs):
 	 		d) Related Consumed Contracts
 	 		e) Related Provided Contracts
 	'''
-	for tenant in tenantsResp:
-		tnData.append(tenant['fvTenant']['attributes'])
+	tenantList = utils.cleanListDict(tenantsResp)
+	for tenant in tenantList:
+		tnData.append(tenant)
 		bdResp = get(apic, apic.baseUrl + '/api/class/fvBD.json?' \
 		             'query-target-filter=wcard(fvBD.dn,"{}")&rsp-prop-' \
-		             'include=config-only'.format(tenant['fvTenant']['attributes']['name']))
-		for bd in bdResp:
+		             'include=config-only'.format(tenant['name']))
+		bdList = utils.cleanListDict(bdResp)
+		for bd in bdList:
 			subnetResp = get(apic,
 				apic.baseUrl + '/api/class/fvSubnet.json?query-target-filter=' \
-				'wcard(fvSubnet.dn,"tn-{}/BD-{}/")'.format(tenant['fvTenant']['attributes']['name'], 
-				bd['fvBD']['attributes']['name']))
-			if not subnetResp:
+				'wcard(fvSubnet.dn,"tn-{}/BD-{}/")'.format(tenant['name'], 
+				bd['name']))
+			subnetList = utils.cleanListDict(subnetResp)
+			if not subnetList:
 				bdData.append((
-					tenant['fvTenant']['attributes']['name'],
-					bd['fvBD']['attributes']['name'],
+					tenant['name'],
+					bd['name'],
 					'Null',
 					'Null',
 					'Null',
 					'Null'))
 			else:
-				for sub in subnetResp:
+				for sub in subnetList:
 					bdData.append((
-						tenant['fvTenant']['attributes']['name'],
-						bd['fvBD']['attributes']['name'],
-						sub['fvSubnet']['attributes']['ip'],
-						sub['fvSubnet']['attributes']['scope'],
-						sub['fvSubnet']['attributes']['preferred'],
-						sub['fvSubnet']['attributes']['virtual']))
+						tenant['name'],
+						bd['name'],
+						sub['ip'],
+						sub['scope'],
+						sub['preferred'],
+						sub['virtual']))
 		apResp = get(apic, apic.baseUrl + '/api/class/fvAp.json?query-target-filter=wcard('\
-	        'fvAp.dn,"tn-{}")'.format(tenant['fvTenant']['attributes']['name']))
+	        'fvAp.dn,"tn-{}")'.format(tenant['name']))
 		if not apResp:
 			pass
 		else:
-			for app in apResp:
+			appList = utils.cleanListDict(apResp)
+			for app in appList:
 				epgResp = get(apic,
 			                apic.baseUrl + '/api/class/fvAEPg.json?' \
 			                'query-target-filter=wcard(fvAEPg.dn, '  \
-			                '"tn-{}/ap-{}/")'.format(tenant['fvTenant']['attributes']['name'],
-			                    app['fvAp']['attributes']['name']))
+			                '"tn-{}/ap-{}/")&rsp-prop-include=config-only'.format(
+				                tenant['name'],
+			                    app['name']))
 				if not epgResp:
 					pass
 				else:
-					for epg in epgResp:
+					epgList = utils.cleanListDict(epgResp)
+					for epg in epgList:
 						rsBd = get(apic,
 					        apic.baseUrl + '/api/node/mo/uni/tn-{}/ap-{}/epg-{}.json?' \
 					            'query-target=children&target-subtree-class=fvRsBd'.format(
-					                tenant['fvTenant']['attributes']['name'],
-					                app['fvAp']['attributes']['name'],
-					                epg['fvAEPg']['attributes']['name']))
+					                tenant['name'],
+					                app['name'],
+					                epg['name']))
 						if not rsBd:
 							epgData.append((
-						        tenant['fvTenant']['attributes']['name'],
-						        app['fvAp']['attributes']['name'],
-						        epg['fvAEPg']['attributes']['name'],
-						        epg['fvAEPg']['attributes']['nameAlias'],
+						        tenant['name'],
+						        app['name'],
+						        epg['name'],
+						        epg['nameAlias'],
 						        '',
 						        '',
-						        epg['fvAEPg']['attributes']['prefGrMemb'],
-						        epg['fvAEPg']['attributes']['pcTag']
+						        epg['prefGrMemb']
 						        )
 						    )
 						else:
+							rsBd = utils.cleanListDict(rsBd)
 							epgData.append((
-						        tenant['fvTenant']['attributes']['name'],
-						        app['fvAp']['attributes']['name'],
-						        epg['fvAEPg']['attributes']['name'],
-						        epg['fvAEPg']['attributes']['nameAlias'],
-						        rsBd[0]['fvRsBd']['attributes']['tnFvBDName'],
-						        rsBd[0]['fvRsBd']['attributes']['dn'].split('tn-')[1].split('/')[0],
-						        epg['fvAEPg']['attributes']['prefGrMemb'],
-						        epg['fvAEPg']['attributes']['pcTag']
+						        tenant['name'],
+						        app['name'],
+						        epg['name'],
+						        epg['nameAlias'],
+						        rsBd[0]['tnFvBDName'],
+						        rsBd[0]['dn'].split('tn-')[1].split('/')[0],
+						        epg['prefGrMemb']
 						        )
 						    )
+	
+	
+	'''
+	get access policy information
+	
+	   1) To include
+	       -Switch Profiles
+		   -Interface Profiles
+		   -AAEPs
+		   -Interface Policy Groups
+		   -Interface Policies
+	
+	'''
+	
+	nodePResp = get(apic, apic.baseUrl + '/api/mo/uni/infra.json?query-target=children&target-subtree-class=infraNodeP&' \
+	                  'rsp-prop-include=config-only')
+	nodePList = utils.cleanListDict(nodePResp)
+	for nodeP in nodePList:
+		infraLeafSResp = get(apic, apic.baseUrl + '/api/mo/' + nodeP['dn'] + '.json?query-target=children&target-subtree' \
+		                    '-class=infraLeafS')
+		if infraLeafSResp:			
+			for infraLeafS in infraLeafSResp:
+				nodeTup = (nodeP['name'], nodeP['descr'], nodeP['dn'], infraLeafS['infraLeafS']['attributes']['name'])
+				nodePData.append(nodeTup)
+		elif not infraLeafSResp:
+			nodeTup = (nodeP['name'], nodeP['descr'], nodeP['dn'], '')
+			nodePData.append(nodeTup)
+		rsAccPortPResp = get(apic, apic.baseUrl + '/api/mo/' + nodeP['dn'] + '.json?query-target=children&target-subtree' \
+		                '-class=infraRsAccPortP')
+		if rsAccPortPResp:
+			rsAccPortPList = utils.cleanListDict(rsAccPortPResp)
+			for rsAccPortP in rsAccPortPList:
+				rsAccPortPTup = (nodeP['name'], rsAccPortP['tDn'].split('accportprof-')[1], rsAccPortP['dn'])
+				rsAccPortPData.append(rsAccPortPTup)
+		elif not rsAccPortPResp:
+			pass
+	
 	writer = utils.writer(wb)
 	try:
 		faults(apic, writer=writer)
-		utils.dictDumpTwo(writer, dhcpData, dhcpCols, 'dhcpClient')
-		utils.dictDumpTwo(writer, tnData, tnCols, 'fvTenant')
-		utils.dictDumpTwo(writer, bdData, bdCols, 'fvBD')
-		utils.dictDumpTwo(writer, epgData, epgCols, 'fvAEPg')
+		utils.dictDumpTwo(writer,dhcpData,dhcpCols, 'dhcpClient')
+		utils.dictDumpTwo(writer, nodePData, nodePCols, 'nodeProfiles')
+		utils.dictDumpTwo(writer, rsAccPortPData, rsAccPortPCols, 'interfaceProfiles')
+		utils.dictDumpTwo(writer,tnData,tnCols, 'fvTenant')
+		utils.dictDumpTwo(writer,bdData,bdCols, 'fvBD')
+		utils.dictDumpTwo(writer,epgData,epgCols, 'fvAEPg')
 		apic.session.close()
 	except AssertionError:
 		raise AssertionError

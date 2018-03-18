@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import coloredlogs
 import json
 import logging
@@ -156,7 +158,7 @@ def fabricBase(apic, *args, **kwargs):
 
 
 def main(*args):
-	parser = argparse.ArgumentParser(description="Fabric Builder")
+	parser = argparse.ArgumentParser(description="Bulk Access Policies")
 	parser.add_argument('-n',
 	                    action="store_true",
 	                    default=False,
