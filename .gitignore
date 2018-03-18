@@ -11,7 +11,7 @@ dist
 # Miscelleneous
 *.pyc
 venv*/
-
+env*/
 # Wing Project Files
 *.wpr
 *.wpu
