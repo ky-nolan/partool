@@ -237,6 +237,12 @@ def main(**kwargs):
 		                    '-class=infraLeafS')
 		if infraLeafSResp:			
 			for infraLeafS in infraLeafSResp:
+				nodeBlkResp = get(apic, apic.baseUrl + '/api/mo/uni/infra.json?query-target=children&target-subtree-class=' \
+				                  'infraNodeBlk&query-target-filter=wcard(infraNodeBlk.dn,"{}")'.format(
+				                  infraLeafS['infraLeafS']['attributes']['dn']))
+				nodeBlkList = utils.cleanListDict(nodeBlkResp)
+				for nodeBlk in nodeBlkList:
+					logging.info(nodeBlk['from_'], nodeBlk['to_'])
 				nodeTup = (nodeP['name'], nodeP['descr'], nodeP['dn'], infraLeafS['infraLeafS']['attributes']['name'])
 				nodePData.append(nodeTup)
 		elif not infraLeafSResp:
