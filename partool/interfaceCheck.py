@@ -98,11 +98,11 @@ class node:
     def __str__(self):
         return str(self.hostname + ", " + self.nodeNumber + ", " + self.address + ", " + self.oobAddress)
 
-loginObj = kyle_login.login('10.224.97.51', 'admin', 'cisco123')
+loginObj = kyle_login.login('x.x.x.x', 'admin', 'cisco123')
 s = loginObj.session
 
 # get for interfaces
-r = s.get('https://10.224.97.51/api/node/class/l1PhysIf.json')
+r = s.get('https://x.x.x.x/api/node/class/l1PhysIf.json')
 
 # get for nodes
 r2 = s.get("https://" + loginObj.ip + '/api/node/class/fabricNode.json?')
